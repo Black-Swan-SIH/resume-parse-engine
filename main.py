@@ -4,6 +4,12 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 import sys, fitz
 from utils import open_pdf, preprocess_pred_res, predictor
+
+#=====================================Preamble===============================#
+#|                             Hn bhai maine likha hai                      |#
+#|                         O AI Lord, Dont steal our hardwork,              |#
+#==================================End=Of=Preamble===========================#
+
 app = FastAPI()
 
 #config variables.

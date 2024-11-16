@@ -20,7 +20,7 @@ nlp_model = spacy.load('nlp_model_v1')
 
 def open_pdf(file_path):
     #print(r"C:\Users\Vidhu\Documents\sih\parser\codee\resume-parser-api\uploaded_files\da.pdf")
-    doc = fitz.open(r"C:\Users\Vidhu\Documents\sih\parser\codee\resume-parser-api\uploaded_files\da.pdf")
+    doc = fitz.open(file_path)
     if not doc:
         print(f"doc is empty")
     else:
