@@ -1,23 +1,62 @@
-# resume-parser-api
+# Resume Parser API
 
 ---
 
-<span style="color:red">THIS IS NOT THE MATCHING ENGINE</span>
+<span style="color:red">**THIS IS NOT THE MATCHING ENGINE**</span>
 
-## Steps
+---
 
-1) Install all dependencies from requirement.txt
-2) Load venv 
-3) Run the api. 
+## Steps to Run
+
+1. Install all dependencies from `requirements.txt`.  
+2. Activate the virtual environment (`venv`).  
+3. Start the API.  
+
+---
 
 ## Current API Routes
 
-1) (POST) **/resume/pdf** - send your resume here in the form of form-data with key "file" and MIME type application/pdf
-2) (GET) **/predict/<filename.pdf>** will return the predicted output. 
+1. **(POST) `/resume/pdf`**  
+   - **Description**: Upload your resume as `form-data`.  
+     - Key: `file`  
+     - MIME Type: `application/pdf`  
+   - **Output**:  
+     ```json
+     {
+         "filename": "da.pdf",
+         "status": "Received file and saved successfully"
+     }
+     ```
 
-### Currently using V1 of model, I am working on a new model from scratch, the output will be same till then enjoy with this. 
+2. **(GET) `/predict/<filename.pdf>`**  
+   - **Description**: Fetch the predicted output for the uploaded file.  
+   - **Output**:  
+     ```json
+     {
+         "entities": [
+             {
+                 "label": "Entity 1",
+                 "text": "Entity Value"
+             },
+             {
+                 "label": "Entity 2",
+                 "text": "Entity Value"
+             }
+         ]
+     }
+     ```
 
-## ToDo
+---
 
-- [ ] OCR Using tesseract
-- [ ] ~~Your Mom~~
+## Notes
+
+- The current implementation uses **V1 of the model**.  
+- A new model is under development, but the output structure will remain the same.  
+- Enjoy using the current version in the meantime!
+
+---
+
+## To-Do List
+
+- [ ] Add OCR support using Tesseract.  
+- [ ] ~~Your Mom~~ (Deprecated Task).  

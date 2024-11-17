@@ -37,18 +37,21 @@ async def resume_pdf(file: UploadFile = File(...)):
             status_code=400,
             content={"message": "Only PDF files are allowed!"}
         )
-    file_names = file_names + [file.filename]
-    file_location = file_location + f"{file.filename}"
-    #debug
-    print(file_location, file_names)
-    with open(file_location, 'wb') as f:
+    current_file_location = os.path.join(file_location, file.filename)
+    file_names.append(file.filename)
+    print(current_file_location, file_names)
+    with open(current_file_location, 'wb') as f:
         f.write(await file.read())
-    return {"filename" : file.filename, "status": "Recieved file and saved succesfully"}
+    return {"filename": file.filename, "status": "Received file and saved successfully"}
+
 
 @app.get("/predict/{name}")
 async def predict_resume(name: str):
     global file_location
+    print(f"Location of file is  {file_location}")
     file_path = os.path.join(file_location, name)
+    print(f"Path of file is {file_path} " )
+    #file_path = file_location
     if not os.path.exists(file_path):
         return {"error": "File not found"}
     pdf_text = open_pdf(file_path)
