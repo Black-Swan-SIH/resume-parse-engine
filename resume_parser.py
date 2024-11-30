@@ -39,7 +39,20 @@ class Resume_Parser(object):
             ext = os.path.splitext(self.__resume)[1].split('.')[1]
         else:
             ext = self.__resume.name.split('.')[1]
-        self.__text_raw = utils.extract_text
+        self.__text_raw = utils.extract_text(self.__resume, '.'+ ext)
+        self.__text = ' '.join(self.__text_raw.split())
+        self.__nlp = nlp(self.__text)
+        self.__custom_nlp = custom_nlp(self.__text_raw)
+        self.__noun_chunks = list(self.__nlp.noun_chunks)
+        self.__get_basic_details()
+
+    def get_extracted_data(self):
+        return self.__details
+
+    def __get_basic_details(self):
+        cust_ent = utils.extract_entities_with_custom_model(
+            self.__custom_nlp
+        )
 
 
 

@@ -162,3 +162,19 @@ def extract_text(file_path, ext):
             text += ' ' + page
     elif ext == '.docx':
         text = extract_text_from_docx(file_path)
+
+def extract_entities_with_custom_model(custom_text):
+    """
+    function to extract entities with custom model
+    """
+    entities = {}
+    for ent in custom_text.ents:
+        if ent.label_ in entities.keys():
+            entities[ent.label_] = [ent.text]
+        else:
+            entities[ent.label_].append(ent.text)
+    for key in entities.keys():
+        entities[key] = list(set(entities[key]))
+    return entities
+
+
