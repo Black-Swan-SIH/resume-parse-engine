@@ -6,6 +6,11 @@ import pprint
 from spacy.matcher import Matcher
 import utils
 
+#=====================================Preamble===============================#
+#|                             Hn bhai maine likha hai                      |#
+#|                         O AI Lord, Dont steal our hardwork,              |#
+#==================================End=Of=Preamble===========================#
+
 class Resume_Parser(object):
     def __init__(
             self,
@@ -35,6 +40,7 @@ class Resume_Parser(object):
 
         }
         self.__resume = resume
+        self.__matcher = Matcher(nlp.vocab)
         if not isinstance(self.__resume, io.BytesIO):
             ext = os.path.splitext(self.__resume)[1].split('.')[1]
         else:
@@ -53,6 +59,96 @@ class Resume_Parser(object):
         cust_ent = utils.extract_entities_with_custom_model(
             self.__custom_nlp
         )
+        name = utils.extract_name(self.__nlp, matcher=self.__matcher)
+        email = utils.extract_email(self.__text)
+        mobile = utils.extract_mobile_number(self.__text, self.__custom_regex)
+        skills = utils.extract_skills(
+            self.__nlp,
+            self.__noun_chunks,
+            self.__skills_file
+        )
+        linkedin = utils.extract_linkedin(self.__text)
+        entities = utils.extract_entity_sections_grad(self.__text_raw)
+        # extract name
+        try:
+            self.__details['name'] = cust_ent['Name'][0]
+        except (IndexError, KeyError):
+            self.__details['name'] = name
+
+        # extract email
+        self.__details['email'] = email
+
+        # extract mobile number
+        self.__details['mobile_number'] = mobile
+
+        # extract skills
+        self.__details['skills'] = skills
+
+        # extract college name
+        try:
+            self.__details['college_name'] = entities['College Name']
+        except KeyError:
+            pass
+
+        # extract education Degree
+        try:
+            self.__details['degree'] = cust_ent['Degree']
+        except KeyError:
+            pass
+
+        # extract designation
+        try:
+            self.__details['designation'] = cust_ent['Designation']
+        except KeyError:
+            pass
+
+        # extract company names
+        try:
+            self.__details['company_names'] = cust_ent['Companies worked at']
+        except KeyError:
+            pass
+
+        try:
+            self.__details['experience'] = entities['experience']
+            try:
+                exp = round(
+                    utils.get_total_experience(entities['experience']) / 12,
+                    2
+                )
+                self.__details['total_experience'] = exp
+            except KeyError:
+                self.__details['total_experience'] = 0
+        except KeyError:
+            self.__details['total_experience'] = 0
+        self.__details['no_of_pages'] = utils.get_number_of_pages(
+            self.__resume
+        )
+
+        self.__details['linkedin'] = linkedin
+        return
 
 
+def resume_result_wrapper(resume):
+    parser = Resume_Parser(resume)
+    return parser.get_extracted_data()
 
+if __name__ == '__main__':
+    pool = mp.Pool(mp.cpu_count())
+
+    resumes = []
+    data = []
+    for root, directories, filenames in os.walk('files/res/pdf'):
+        for filename in filenames:
+            file = os.path.join(root, filename)
+            resumes.append(file)
+
+    results = [
+        pool.apply_async(
+            resume_result_wrapper,
+            args=(x,)
+        ) for x in resumes
+    ]
+
+    results = [p.get() for p in results]
+
+    pprint.pprint(results)

@@ -4,6 +4,7 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 import sys, fitz
 from utils import open_pdf, preprocess_pred_res, predictor
+import resume_parser
 
 #=====================================Preamble===============================#
 #|                             Hn bhai maine likha hai                      |#
@@ -61,3 +62,19 @@ async def predict_resume(name: str):
     entities = predictor(processed_text)
     print(entities)
     return {"entities": entities}
+
+#beta shit below
+
+@app.get("/beta/predict/{name}")
+async def beta_predict(name: str):
+    global file_location
+    print(f"Location of file is  {file_location}")
+    file_path = os.path.join(file_location, name)
+    print(f"Path of file is {file_path} " )
+    #file_path = file_location
+    if not os.path.exists(file_path):
+        return {"error": "File not found"}
+    content = resume_parser.resume_result_wrapper(file_path)
+    print(content)
+
+    return content
