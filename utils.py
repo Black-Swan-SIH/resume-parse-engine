@@ -1,3 +1,4 @@
+import io
 import os
 import random
 import json
@@ -7,6 +8,22 @@ import pickle
 import re
 import sys, fitz
 import pymupdf
+import nltk
+import pandas as pd
+import  docx2txt
+from datetime import datetime
+from dateutil import relativedelta
+import constants as cs
+from pdfminer.converter import TextConverter
+from pdfminer.pdfinterp import PDFPageInterpreter
+from pdfminer.pdfinterp import PDFResourceManager
+from pdfminer.layout import LAParams
+from pdfminer.pdfpage import PDFPage
+from pdfminer.pdfparser import PDFSyntaxError
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+from collections import defaultdict
+
 
 #=====================================Preamble===============================#
 #|                             Hn bhai maine likha hai                      |#
@@ -57,29 +74,91 @@ def transform_newdata(cv_data):
         ))
     return transformed
 
-"""def preprocess_all_files(input_dir, output_dir):
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+'''
+Below code is v2
+'''
+def extract_text_from_pdf(file_path):
+    """
+    Function to extract text from pdf file
+    """
+    if not isinstance(file_path, io.BytesIO):
+        with open(file_path, "rb") as fh:
+            try:
+                for page in PDFPage.get_pages(
+                    fh,
+                    caching=True,
+                    check_extractable=True
+                ):
+                    resource_manager = PDFResourceManager()
+                    fake_file_handle = io.StringIO()
 
-    all_files = [f for f in os.listdir(input_dir) if f.startswith('cv') and f.endswith("_annotated.json")]
-    all_tr_data= []
+                    converter = TextConverter(
+                        resource_manager,
+                        fake_file_handle,
+                        laparams=LAParams()
 
-    for file_name in all_files:
-        input_path = os.path.join(input_dir, file_name)
-        with open(input_path, "r") as file:
-            cv_data = json.load(file)
+                    )
+                    page_interpretor = PDFPage.get_pages(
+                        resource_manager,
+                        converter
+                    )
+                    page_interpretor = PDFPageInterpreter(
+                        resource_manager,
+                        converter
+                    )
+                    page_interpretor.process_page(page)
+                    text = fake_file_handle.getvalue()
+                    yield text
 
-        transformed_data = transform_newdata(cv_data)
-        all_tr_data.extend(transformed_data)
+                    converter.close()
+                    fake_file_handle.close()
+            except PDFSyntaxError:
+                return
+    else:
+        #incase file is not in drive, extracting a remote file
+        try:
+            for page in PDFPage.get_pages(
+                file_path,
+                caching=True,
+                check_extractable=True
+            ):
+                resource_manager = PDFResourceManager()
+                fake_file_handle = io.StringIO()
+                converter = TextConverter(
+                    resource_manager,
+                    fake_file_handle,
+                    laparams=LAParams()
+                )
+                page_interpretor = PDFPageInterpreter(
+                    resource_manager,
+                    converter
+                )
+                page_interpretor.process_page(page)
 
-        output_path = os.path.join(output_dir, file_name.replace("_annotated.json", "_transformed.json"))
-        with open(output_path, "w") as outfile:
-            json.dump(transformed_data, outfile, indent=2)
+                text = fake_file_handle.getvalue()
+                yield text
 
-    combined_output_path = os.path.join(output_dir, "combined_train_data.json")
-    with open(combined_output_path, "w") as combined_file:
-        json.dump(all_tr_data, combined_file, indent=2)
+                converter.close()
+                fake_file_handle.close()
+        except PDFSyntaxError:
+            return
 
-    return all_tr_data
+def extract_text_from_docx(doc_path):
+    try:
+        temp = docx2txt.process(doc_path)
+        text = [line.replace('\t', ' ') for line in temp.split('\n') if line]
+        return ' '.join(text)
+    except KeyError:
+        return ' '
 
-all_data = preprocess_all_files(input_directory, output_directory)"""
+def extract_text(file_path, ext):
+    """
+    This is used to extract text from pdf, and also call the correct functionn
+    accordingly.
+    """
+    text = ''
+    if ext == '.pdf':
+        for page in extract_text_from_pdf(file_path):
+            text += ' ' + page
+    elif ext == '.docx':
+        text = extract_text_from_docx(file_path)
