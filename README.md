@@ -45,6 +45,25 @@
          ]
      }
      ```
+3. **(NEW!!!) (POST) `/resume/beta`**  
+   - **Description**: Upload your resume as `form-data`.  
+     - Key: `file`  
+     - MIME Type: `application/pdf`  
+   - **Output**:  
+     ```json
+      {
+         "entities": [
+             {
+                 "label": "Entity 1",
+                 "text": "Entity Value"
+             },
+             {
+                 "label": "Entity 2",
+                 "text": "Entity Value"
+             }
+         ]
+     }
+     ```
 
 ---
 
