@@ -46,7 +46,7 @@
      }
      ```
 3. **(NEW!!!) (POST) `/resume/beta`**  
-   - **Description**: Upload your resume as `form-data`.  
+   - **Description**: Newer, Optimised and Faster Method to get predictions.  
      - Key: `file`  
      - MIME Type: `application/pdf`  
    - **Output**:  
@@ -78,4 +78,6 @@
 ## To-Do List
 
 - [ ] Add OCR support using Tesseract.  
-- [ ] ~~Your Mom~~ (Deprecated Task).  
+- [ ] Add Matching Engine.
+- [ ] Add JD Parser. 
+- [ ] ~~Your Mom~~ .  
