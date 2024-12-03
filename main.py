@@ -1,10 +1,11 @@
-import os.path
+import os
+import shutil
 
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
-import sys, fitz
 from utils import open_pdf, preprocess_pred_res, predictor
 import resume_parser
+import aiofiles
 
 #=====================================Preamble===============================#
 #|                             Hn bhai maine likha hai                      |#
@@ -13,68 +14,103 @@ import resume_parser
 
 app = FastAPI()
 
-#config variables.
-file_location = f"uploaded_files/"
-file_names  = []
+# Config variables
+file_location = "uploaded_files/"
 
 
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
+def process_resume(file_path):
+    try:
+        data = resume_parser.resume_result_wrapper(file_path)
+        return data
+    except Exception as e:
+        return {"error": str(e)}
 
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"Hello {name}"}
 
 
-@app.post("/resume/pdf")
-async def resume_pdf(file: UploadFile = File(...)):
-    global file_location, file_names
-    if not os.path.exists(file_location):
-        os.makedirs(file_location)
+@app.post("/resume/normal")
+async def resume_normal(file: UploadFile = File(...)):
+    """Handles PDF upload and returns processed entities."""
+    # Validate file type
     if file.content_type != "application/pdf":
         return JSONResponse(
-            status_code=400,
-            content={"message": "Only PDF files are allowed!"}
+            status_code=400, content={"message": "Only PDF files are allowed!"}
         )
-    current_file_location = os.path.join(file_location, file.filename)
-    file_names.append(file.filename)
-    print(current_file_location, file_names)
-    with open(current_file_location, 'wb') as f:
-        f.write(await file.read())
-    return {"filename": file.filename, "status": "Received file and saved successfully"}
+
+    # Save the file
+    if not os.path.exists(file_location):
+        os.makedirs(file_location)
+    file_path = os.path.join(file_location, file.filename)
+    async with aiofiles.open(file_path, "wb") as f:
+        await f.write(await file.read())
+
+    # Process the PDF
+    try:
+        pdf_text = open_pdf(file_path)
+        processed_text = preprocess_pred_res(pdf_text)
+        entities = predictor(processed_text)
+    except Exception as e:
+        return JSONResponse(
+            status_code=500, content={"message": f"Error during processing: {str(e)}"}
+        )
+
+    # Return processed data
+    return {"filename": file.filename, "entities": entities}
 
 
-@app.get("/predict/{name}")
-async def predict_resume(name: str):
-    global file_location
-    print(f"Location of file is  {file_location}")
-    file_path = os.path.join(file_location, name)
-    print(f"Path of file is {file_path} " )
-    #file_path = file_location
-    if not os.path.exists(file_path):
-        return {"error": "File not found"}
-    pdf_text = open_pdf(file_path)
-    #print(pdf_text)
-    processed_text = preprocess_pred_res(pdf_text)
-    #print(processed_text)
-    entities = predictor(processed_text)
-    print(entities)
-    return {"entities": entities}
+# @app.post("/resume/beta")
+# async def resume_beta(file: UploadFile = File(...)):
+#     try:
+#         # Validate file type
+#         print(f"Content type: {file.content_type}, File size: {len(await file.read())}")
+#         if file.content_type != "application/pdf":
+#             return JSONResponse(
+#                 status_code=400, content={"message": "Only PDF files are allowed!"}
+#             )
+#
+#         # Save the file
+#         if not os.path.exists(file_location):
+#             os.makedirs(file_location)
+#         file_path = os.path.join(file_location, file.filename)
+#         async with aiofiles.open(file_path, "wb") as f:
+#             file_data = await file.read()
+#             await f.write(file_data)
+#             print(f"File saved at {file_path}, size: {len(file_data)} bytes")
+#
+#         # Process the PDF
+#         content = resume_parser.resume_result_wrapper(file_path)
+#         print(content)
+#
+#         return {"filename": file.filename, "content": content}
+#     except Exception as e:
+#         import traceback
+#         return JSONResponse(
+#             status_code=500,
+#             content={"message": f"Error during processing: {str(e)}", "trace": traceback.format_exc()}
+#         )
 
-#beta shit below
 
-@app.get("/beta/predict/{name}")
-async def beta_predict(name: str):
-    global file_location
-    print(f"Location of file is  {file_location}")
-    file_path = os.path.join(file_location, name)
-    print(f"Path of file is {file_path} " )
-    #file_path = file_location
-    if not os.path.exists(file_path):
-        return {"error": "File not found"}
-    content = resume_parser.resume_result_wrapper(file_path)
-    print(content)
+@app.post("/resume/beta")
+async def parse_resume(file: UploadFile = File(...)):
+    try:
+        # Save the uploaded file to a temporary location
+        temp_dir = "temp_uploads"
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_path = os.path.join(temp_dir, file.filename)
 
-    return content
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # Process the resume
+        result = process_resume(temp_path)
+
+        # Clean up the temp file
+        os.remove(temp_path)
+
+        # Return the result
+        return JSONResponse(content=result)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)

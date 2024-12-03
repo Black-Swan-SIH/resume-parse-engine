@@ -15,8 +15,8 @@ class Resume_Parser(object):
     def __init__(
             self,
             resume,
-            skills_file,
-            cus_regex
+            skills_file=None,
+            cus_regex=None
 
     ):
         print("Spacy Model is loading")
@@ -45,7 +45,10 @@ class Resume_Parser(object):
             ext = os.path.splitext(self.__resume)[1].split('.')[1]
         else:
             ext = self.__resume.name.split('.')[1]
-        self.__text_raw = utils.extract_text(self.__resume, '.'+ ext)
+        self.__text_raw = utils.extract_text(self.__resume, '.pdf')
+        if not self.__text_raw:  # Check if None or empty
+            raise ValueError(f"Failed to extract text from resume: {self.__resume}")
+
         self.__text = ' '.join(self.__text_raw.split())
         self.__nlp = nlp(self.__text)
         self.__custom_nlp = custom_nlp(self.__text_raw)
@@ -140,6 +143,7 @@ if __name__ == '__main__':
     for root, directories, filenames in os.walk('files/res/pdf'):
         for filename in filenames:
             file = os.path.join(root, filename)
+            print(file)
             resumes.append(file)
 
     results = [

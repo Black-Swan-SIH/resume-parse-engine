@@ -67,67 +67,71 @@ def transform_newdata(cv_data):
 '''
 Below code is v2
 '''
-def extract_text_from_pdf(file_path):
+def extract_text_from_pdf(pdf_path):
     """
-    Function to extract text from pdf file
+    Helper function to extract the plain text from .pdf files
+
+    :param pdf_path: path to PDF file to be extracted (remote or local)
+    :return: iterator of string of extracted text
     """
-    if not isinstance(file_path, io.BytesIO):
-        with open(file_path, "rb") as fh:
+    # https://www.blog.pythonlibrary.org/2018/05/03/exporting-data-from-pdfs-with-python/
+    if not isinstance(pdf_path, io.BytesIO):
+        # extract text from local pdf file
+        with open(pdf_path, 'rb') as fh:
             try:
                 for page in PDFPage.get_pages(
-                    fh,
-                    caching=True,
-                    check_extractable=True
+                        fh,
+                        caching=True,
+                        check_extractable=True
                 ):
                     resource_manager = PDFResourceManager()
                     fake_file_handle = io.StringIO()
-
                     converter = TextConverter(
                         resource_manager,
                         fake_file_handle,
+                        # codec='utf-8',
                         laparams=LAParams()
+                    )
+                    page_interpreter = PDFPageInterpreter(
+                        resource_manager,
+                        converter
+                    )
+                    page_interpreter.process_page(page)
 
-                    )
-                    page_interpretor = PDFPage.get_pages(
-                        resource_manager,
-                        converter
-                    )
-                    page_interpretor = PDFPageInterpreter(
-                        resource_manager,
-                        converter
-                    )
-                    page_interpretor.process_page(page)
                     text = fake_file_handle.getvalue()
                     yield text
 
+                    # close open handles
                     converter.close()
                     fake_file_handle.close()
             except PDFSyntaxError:
                 return
     else:
-        #incase file is not in drive, extracting a remote file
+        # extract text from remote pdf file
         try:
             for page in PDFPage.get_pages(
-                file_path,
-                caching=True,
-                check_extractable=True
+                    pdf_path,
+                    caching=True,
+                    check_extractable=True
             ):
                 resource_manager = PDFResourceManager()
                 fake_file_handle = io.StringIO()
                 converter = TextConverter(
                     resource_manager,
                     fake_file_handle,
+                    # codec='utf-8',
                     laparams=LAParams()
                 )
-                page_interpretor = PDFPageInterpreter(
+                page_interpreter = PDFPageInterpreter(
                     resource_manager,
                     converter
                 )
-                page_interpretor.process_page(page)
+                page_interpreter.process_page(page)
 
                 text = fake_file_handle.getvalue()
                 yield text
 
+                # close open handles
                 converter.close()
                 fake_file_handle.close()
         except PDFSyntaxError:
@@ -143,15 +147,19 @@ def extract_text_from_docx(doc_path):
 
 def extract_text(file_path, ext):
     """
-    This is used to extract text from pdf, and also call the correct functionn
-    accordingly.
+    Extract text from different file formats.
     """
     text = ''
-    if ext == '.pdf':
-        for page in extract_text_from_pdf(file_path):
-            text += ' ' + page
-    elif ext == '.docx':
-        text = extract_text_from_docx(file_path)
+    try:
+        if ext == '.pdf':
+            for page in extract_text_from_pdf(file_path):
+                text += ' ' + page
+        elif ext == '.docx':
+            text = extract_text_from_docx(file_path)
+    except Exception as e:
+        print(f"Error extracting text from {file_path}: {e}")
+    return text if text else None  # Ensure we return None if no text is extracted
+
 
 def extract_entities_with_custom_model(custom_text):
     """
@@ -159,12 +167,14 @@ def extract_entities_with_custom_model(custom_text):
     """
     entities = {}
     for ent in custom_text.ents:
-        if ent.label_ in entities.keys():
-            entities[ent.label_] = [ent.text]
-        else:
-            entities[ent.label_].append(ent.text)
+        if ent.label_ not in entities:
+            entities[ent.label_] = []  # Initialize list if the label is not found
+        entities[ent.label_].append(ent.text)
+
+    # Remove duplicates for each label
     for key in entities.keys():
         entities[key] = list(set(entities[key]))
+
     return entities
 
 def extract_name(nlp_text, matcher):
@@ -295,25 +305,26 @@ def extract_entity_sections_grad(text):
 
 def get_total_experience(experience_list):
     """
-    Wrapper function to extract total months of experience from a resumes
+    Wrapper function to extract total months of experience from a resume
 
     :param experience_list: list of experience text extracted
     :return: total months of experience
     """
     exp_ = []
-    for line in experience_list:
-        experience = re.search(
-            r'(?P<fmonth>\w+.\d+)\s*(\D|to)\s*(?P<smonth>\w+.\d+|present)',
-            line,
-            re.I
-        )
-        if experience:
-            exp_.append(experience.groups())
-    total_exp = sum(
-        [get_number_of_months_from_dates(i[0], i[2]) for i in exp_]
-    )
-    total_experience_in_months = total_exp
-    return total_experience_in_months
+    for experience in experience_list:
+        date_range = re.findall(r'(\w+\s\d{4})', experience)
+        if len(date_range) == 2:
+            try:
+                start_date = datetime.strptime(date_range[0], "%b %Y")
+                end_date = datetime.strptime(date_range[1], "%b %Y")
+            except ValueError:
+                start_date = datetime.strptime(date_range[0], "%B %Y")
+                end_date = datetime.strptime(date_range[1], "%B %Y")
+
+            if start_date and end_date:
+                months_diff = relativedelta.relativedelta(end_date, start_date)
+                exp_.append(months_diff.years * 12 + months_diff.months)
+    return sum(exp_) if exp_ else 0
 
 def get_number_of_months_from_dates(date1, date2):
     """
