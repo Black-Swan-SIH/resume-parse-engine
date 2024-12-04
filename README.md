@@ -66,6 +66,32 @@
      ```
 
 ---
+## Output Format
+- All of these key-pairs will be returned, Null will be returned if not detected
+```json    "name": " ",
+    "email": "",
+    "mobile_number": "",
+    "skills": [
+        
+    ],
+    "college_name": null,
+    "degree": [
+        ""
+    ],
+    "designation": [
+        ""
+    ],
+    "experience": [
+        ""
+    ],
+    "company_name": null,
+    "no_of_pages": 2,
+    "total_exp": null,
+    "total_experience": 0.0,
+    "linkedin": null
+}
+```
+---
 
 ## Notes
 
@@ -74,6 +100,7 @@
 - Enjoy using the current version in the meantime!
 
 ---
+
 
 ## To-Do List
 
