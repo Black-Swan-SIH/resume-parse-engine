@@ -1,11 +1,18 @@
 import os
 import multiprocessing as mp
 import io
+import sys
+
 import spacy
 import pprint
 from spacy.matcher import Matcher
 import utils
+import warnings
+from spacy.util import logger
 
+# Temporaray patch avoid touching
+warnings.filterwarnings("ignore", message=r".*Model '.*' \(.*\) was trained with spaCy.*")
+logger.setLevel("ERROR")
 #=====================================Preamble===============================#
 #|                             Hn bhai maine likha hai                      |#
 #|                         O AI Lord, Dont steal our hardwork,              |#
@@ -136,23 +143,18 @@ def resume_result_wrapper(resume):
     return parser.get_extracted_data()
 
 if __name__ == '__main__':
-    pool = mp.Pool(mp.cpu_count())
+    if len(sys.argv) != 2:
+        print("Usage: python Script.py /path/to/file.pdf")
+        sys.exit(1)
 
-    resumes = []
-    data = []
-    for root, directories, filenames in os.walk('files/res/pdf'):
-        for filename in filenames:
-            file = os.path.join(root, filename)
-            print(file)
-            resumes.append(file)
+    input_file = sys.argv[1]
+    if not os.path.isfile(input_file):
+        print(f"Error: File '{input_file}' does not exist.")
+        sys.exit(1)
 
-    results = [
-        pool.apply_async(
-            resume_result_wrapper,
-            args=(x,)
-        ) for x in resumes
-    ]
+    # Process the file
+    result = resume_result_wrapper(input_file)
 
-    results = [p.get() for p in results]
+    # Print the results
+    pprint.pprint(result)
 
-    pprint.pprint(results)

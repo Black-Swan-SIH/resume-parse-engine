@@ -303,29 +303,49 @@ def extract_entity_sections_grad(text):
     #         entities[entity] = None
     return entities
 
+
 def get_total_experience(experience_list):
     """
-    Wrapper function to extract total months of experience from a resume
+    Extracts the total months of experience from a resume.
 
-    :param experience_list: list of experience text extracted
-    :return: total months of experience
+    :param experience_list: List of experience text extracted
+    :return: Total months of experience
     """
     exp_ = []
     for experience in experience_list:
+        # Clean and extract date ranges
+        experience = experience.replace("\t", " ").strip()  # Remove tabs
         date_range = re.findall(r'(\w+\s\d{4})', experience)
+
         if len(date_range) == 2:
             try:
+                # Try parsing start and end dates
                 start_date = datetime.strptime(date_range[0], "%b %Y")
-                end_date = datetime.strptime(date_range[1], "%b %Y")
-            except ValueError:
-                start_date = datetime.strptime(date_range[0], "%B %Y")
-                end_date = datetime.strptime(date_range[1], "%B %Y")
+                end_date_str = date_range[1].lower()
 
+                if end_date_str in ["present", "current"]:
+                    end_date = datetime.now()  # Use current date for ongoing experiences
+                else:
+                    end_date = datetime.strptime(date_range[1], "%b %Y")
+            except ValueError:
+                try:
+                    # Retry parsing with full month names
+                    start_date = datetime.strptime(date_range[0], "%B %Y")
+                    if end_date_str in ["present", "current"]:
+                        end_date = datetime.now()
+                    else:
+                        end_date = datetime.strptime(date_range[1], "%B %Y")
+                except ValueError:
+                    # Skip if parsing fails
+                    print(f"Skipping invalid date range: {experience}")
+                    continue
+
+            # Calculate months difference
             if start_date and end_date:
                 months_diff = relativedelta.relativedelta(end_date, start_date)
                 exp_.append(months_diff.years * 12 + months_diff.months)
-    return sum(exp_) if exp_ else 0
 
+    return sum(exp_) if exp_ else 0
 def get_number_of_months_from_dates(date1, date2):
     """
     Helper function to extract total months of experience from a resumes
