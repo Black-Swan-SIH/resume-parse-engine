@@ -1,7 +1,8 @@
 import os
 import shutil
+from auth import validate_api_key
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Depends, Header
 from fastapi.responses import JSONResponse
 from utils import open_pdf, preprocess_pred_res, predictor
 import resume_parser
@@ -17,7 +18,8 @@ app = FastAPI()
 # Config variables
 file_location = "uploaded_files/"
 
-
+async def api_key_auth(x_api_key: str = Header(...)):
+    validate_api_key(x_api_key)
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
@@ -94,7 +96,9 @@ async def resume_normal(file: UploadFile = File(...)):
 
 
 @app.post("/resume/beta")
-async def parse_resume(file: UploadFile = File(...)):
+async def parse_resume(file: UploadFile = File(...),
+                       _: str = Depends(api_key_auth),
+                       ):
     try:
         # Save the uploaded file to a temporary location
         temp_dir = "temp_uploads"
