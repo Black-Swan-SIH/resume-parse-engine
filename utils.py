@@ -402,3 +402,115 @@ def get_number_of_pages(file_name):
                 return None
     except PDFSyntaxError:
         return None
+
+
+def extract_years_of_experience(text):
+    """
+    Name.
+    """
+    # regex
+    patterns = [
+        r'(\d+)\s+years',  # match '5 years', '3 years' etc.
+        r'(\d+)\s*-\s*(\d+)\s+years',  # match '2-3 years', '3 - 5 years' etc.
+        r'minimum of\s*(\d+)',  # match 'minimum of 3 years' etc.
+        r'at least\s*(\d+)',  # match 'at least 2 years' etc.
+        r'(\d+)\s+to\s+(\d+)\s+years',  # match '3 to 5 years', '2 to 3 years' etc.
+
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            # return range like match
+            if len(match.groups()) > 1:
+                return f"{match.group(1)} to {match.group(2)} years"
+            # return single number type match
+            return f"{match.group(1)} years"
+
+    # if no one mathces
+    return None
+
+from collections import defaultdict
+
+def is_readable(word):
+    allowed_chars_regex = r'^[a-zA-Z0-9\s.,;:!?\'\"-]+$'
+
+    return re.match(allowed_chars_regex, word) is not None
+
+
+def parse_entities_with_custom_model(nlp_processed_text):
+    identified_entities = defaultdict(list)
+    entity_buffer = []
+    current_label = ""
+
+    for token in nlp_processed_text:
+        # Extract tag type without the B- or I- prefix
+        tag_category = token.tag_.split('-')[-1] if '-' in token.tag_ else token.tag_
+
+        if is_readable(token.text):
+            if token.tag_.startswith('B-'):
+                if entity_buffer:
+                    identified_entities[current_label].append(' '.join(entity_buffer))
+                current_label = tag_category
+                entity_buffer = [token.text]
+            elif token.tag_.startswith('I-'):
+                if not entity_buffer:  # Initialize a new entity if no preceding B- tag
+                    current_label = tag_category
+                if tag_category == current_label:
+                    entity_buffer.append(token.text)
+                else:
+                    if entity_buffer:
+                        identified_entities[current_label].append(' '.join(entity_buffer))
+                        entity_buffer = [token.text]
+                    current_label = tag_category
+            else:
+                if entity_buffer:
+                    identified_entities[current_label].append(' '.join(entity_buffer))
+                    entity_buffer = []
+                current_label = ""
+        else:
+            # Close the current entity buffer if the token is not valid
+            if entity_buffer:
+                identified_entities[current_label].append(' '.join(entity_buffer))
+                entity_buffer = []
+            current_label = ""
+
+    # Append the last entity if it exists
+    if entity_buffer:
+        identified_entities[current_label].append(' '.join(entity_buffer))
+
+    return dict(identified_entities)
+def clean_skills(skills):
+    processed_skills = []
+    for individual_skill in skills:
+        sanitized_skill = remove_non_readable_chars(individual_skill.strip())
+        if len(sanitized_skill) > 0:
+            processed_skills.append(sanitized_skill)
+    return processed_skills
+def remove_non_readable_chars(input_text):
+    unreadable_pattern = r'[\x00-\x1F\x7F]'
+    sanitized_text = re.sub(unreadable_pattern, '', input_text)
+    return sanitized_text
+
+def extract_skills_from_all(all_skill_entries, text_chunks, skills_file_path=None):
+    if not skills_file_path:
+        skill_data = pd.read_csv(
+            os.path.join(os.path.dirname(__file__), 'skills.csv')
+        )
+    else:
+        skill_data = pd.read_csv(skills_file_path)
+    available_skills = list(skill_data.columns.values)
+    identified_skills = []
+
+    for entry in all_skill_entries:
+        entry_tokens = entry.lower().split()
+        for word in entry_tokens:
+            if word in available_skills:
+                identified_skills.append(word)
+
+    for chunk in text_chunks:
+        processed_chunk = chunk.text.lower().strip()
+        if processed_chunk in available_skills:
+            identified_skills.append(processed_chunk)
+
+    return [skill.capitalize() for skill in set(skill.lower() for skill in identified_skills)]
