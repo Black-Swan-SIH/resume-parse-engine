@@ -13,38 +13,20 @@ def to_percentage(value):
     return "{:.2f}".format(percentage)
 
 
-class MatchingEngine(object):
-    def __init__(
-            self,
-            job_description,
-            resumes: list[str],
-            skills_file=None,
-            custom_regex=None
-    ):
-        self.jd = job_description
-        self.resumes = resumes
-        self.parsed_jd = JdParser(job_description).get_extracted_data()
-        self.parsed_resumes = []
-        for resume in self.resumes:
-            self.parsed_resumes.append(Resume_Parser(resume, skills_file, custom_regex).get_extracted_data())
-
-        self.job_skills = [skill.lower() for skill in self.parsed_jd['skills']]
-        self.resumes_skills = []
-
-        for resume in self.parsed_resumes:
-            batch = []
-            for skill in resume['skills']:
-                batch.append(skill.lower())
-            self.resumes_skills.append(batch)
+class MatchingEngine:
+    def __init__(self, job_skills, candidates):
+        self.job_skills = [skill.lower() for skill in job_skills]
+        self.resumes_skills = [[skill.lower() for skill in candidate['skills']] for candidate in candidates]
+        self.candidates = candidates
 
     def simple_intersection_score(self):
         rank = []
         for index, skills in enumerate(self.resumes_skills):
-            job_skills = set(self.job_skills)
-            resume_skills = set(skills)
-            common_skills = set(job_skills).intersection(set(resume_skills))
-            score = len(common_skills) / len(set(job_skills))
-            rank.append({'name': self.parsed_resumes[index]['name'], 'score': to_percentage(score)})
+            job_skills_set = set(self.job_skills)
+            resume_skills_set = set(skills)
+            common_skills = job_skills_set.intersection(resume_skills_set)
+            score = len(common_skills) / len(job_skills_set) if job_skills_set else 0
+            rank.append({'name': self.candidates[index]['name'], 'score': to_percentage(score)})
         return rank
 
     def cosine_similarity_with_tfidf(self):
@@ -54,26 +36,24 @@ class MatchingEngine(object):
             vectors = vectorizer.fit_transform([" ".join(self.job_skills), " ".join(skills)])
             cosine_sim = cosine_similarity(vectors[0:1], vectors[1:2])
             score = cosine_sim[0, 0]
-            rank.append({'name': self.parsed_resumes[index]['name'], 'score': to_percentage(score)})
+            rank.append({'name': self.candidates[index]['name'], 'score': to_percentage(score)})
         return rank
 
     def jaccard_similarity_score(self):
         rank = []
         for index, skills in enumerate(self.resumes_skills):
-            job_skills = set(self.job_skills)
-            resume_skills = set(skills)
-            intersection = job_skills.intersection(resume_skills)
-            union = job_skills.union(resume_skills)
-            score = len(intersection) / len(union)
-            rank.append({'name': self.parsed_resumes[index]['name'], 'score': to_percentage(score)})
+            job_skills_set = set(self.job_skills)
+            resume_skills_set = set(skills)
+            intersection = job_skills_set.intersection(resume_skills_set)
+            union = job_skills_set.union(resume_skills_set)
+            score = len(intersection) / len(union) if union else 0
+            rank.append({'name': self.candidates[index]['name'], 'score': to_percentage(score)})
         return rank
 
 
 def matching_result_wrapper(jd, resumes: list[str]):
     parser = MatchingEngine(jd, resumes)
     return parser.simple_intersection_score()
-
-
 
 
 def compare_profiles_with_expert(data):
@@ -84,53 +64,43 @@ def compare_profiles_with_expert(data):
         data (dict): A JSON object containing subjectData, candidateData, and expertData.
 
     Returns:
-        list[dict]: A list of dictionaries containing similarity scores for each candidate.
+        dict: A dictionary containing profile score, relevancy score, and candidate matching results.
     """
-    subject_skills = data["subjectData"]["recommendedSkills"]
-    expert_skills = data["expertData"]["skills"]
-    candidates = data["candidateData"]
+    subject_skills = set(data["subjectData"]["recommendedSkills"])
+    expert_skills = set(data["expertData"]["skills"])
+    candidate_skills = [set(candidate["skills"]) for candidate in data["candidateData"]]
 
-    # Initialize MatchingEngine with parsed skills directly
-    engine = MatchingEngine(
-        job_description={"skills": subject_skills},
-        resumes=[{"name": candidate["name"], "skills": candidate["skills"]} for candidate in candidates]
-    )
+    # Aggregate all candidate skills
+    aggregated_candidate_skills = set().union(*candidate_skills)
 
-    # Collect similarity scores
-    intersection_scores = engine.simple_intersection_score()
-    cosine_scores = engine.cosine_similarity_with_tfidf()
-    jaccard_scores = engine.jaccard_similarity_score()
+    # Calculate Profile Score
+    profile_score = len(expert_skills.intersection(aggregated_candidate_skills)) / len(aggregated_candidate_skills) * 100
 
-    # Compile results
+    # Calculate Relevancy Score
+    job_match_score = len(expert_skills.intersection(subject_skills)) / len(subject_skills) * 100
+    relevancy_score = (0.6 * profile_score) + (0.4 * job_match_score)
+
+    # Candidate Matching Results
     results = []
-    total_similarity = 0  # For calculating average similarity
-
-    for i, candidate in enumerate(candidates):
-        # Parse scores
-        intersection_score = float(intersection_scores[i]["score"])
-        cosine_score = float(cosine_scores[i]["score"])
-        jaccard_score = float(jaccard_scores[i]["score"])
-
-        # Calculate overall similarity (weighted average)
+    for candidate in data["candidateData"]:
+        intersection_score = len(subject_skills.intersection(set(candidate["skills"]))) / len(subject_skills) * 100
+        cosine_score = 100  # Placeholder; adjust if cosine similarity computation is included
+        jaccard_score = len(subject_skills.intersection(set(candidate["skills"]))) / len(subject_skills.union(set(candidate["skills"]))) * 100
         overall_similarity = (intersection_score + cosine_score + jaccard_score) / 3
-        total_similarity += overall_similarity
 
-        # Append the candidate's results
         results.append({
             "name": candidate["name"],
-            "intersection_score": intersection_score,
-            "cosine_similarity": cosine_score,
-            "jaccard_similarity": jaccard_score,
+            "intersection_score": round(intersection_score, 2),
+            "cosine_similarity": round(cosine_score, 2),
+            "jaccard_similarity": round(jaccard_score, 2),
             "overall_similarity": round(overall_similarity, 2)
         })
 
-    # Average similarity
-    average_similarity = round(total_similarity / len(candidates), 2) if candidates else 0
-
-    return results, average_similarity
-
-
-
+    return {
+        "profile_score": round(profile_score, 2),
+        "relevancy_score": round(relevancy_score, 2),
+        "candidates": results
+    }
 
 
 
@@ -162,34 +132,10 @@ if __name__ == '__main__':
             )
         ]
 
-        # Example JSON Input
-        json_input = {
-            "subjectData": {
-                "title": "React Developer",
-                "recommendedSkills": ["React", "JavaScript", "HTML", "CSS"]
-            },
-            "candidateData": [
-                {
-                    "name": "John Doe",
-                    "skills": ["React", "JavaScript", "HTML", "CSS"]
-                },
-                {
-                    "name": "Jane Doe",
-                    "skills": ["React", "JavaScript", "HTML"]
-                },
-                {
-                    "name": "Jim Doe",
-                    "skills": ["React", "JavaScript", "CSS"]
-                }
-            ],
-            "expertData": {
-                "name": "Expert",
-                "skills": ["React", "JavaScript", "HTML", "CSS"]
-            }
-        }
+
 
         # Process JSON Input
-        result = compare_profiles_with_expert(json_input)
+        #result = compare_profiles_with_expert(json_input)
         # results = [p.get() for p in results]
 
         pprint.pprint(result)

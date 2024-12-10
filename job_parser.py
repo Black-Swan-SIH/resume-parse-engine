@@ -25,11 +25,24 @@ class JdParser(object):
             'occupation': None,
         }
         self.__jd = jd
-        if not isinstance(self.__jd, io.BytesIO):
-            ext = os.path.splitext(self.__jd)[1].split('.')[1]
+
+        # Check if jd is a dictionary (parsed job description)
+        if isinstance(self.__jd, dict):
+            self.__text_raw = ' '.join(self.__jd.get('skills', []))  # Assuming 'skills' contains a list of strings
+            self.__details['skills'] = self.__jd.get('skills', [])
+            return
         else:
-            ext = self.__jd.name.split('.')[1]
-        self.__text_raw = utils.extract_text(self.__jd, '.' + ext)
+            if not isinstance(self.__jd, io.BytesIO):
+                ext = os.path.splitext(self.__jd)[1]
+                if ext.startswith('.'):
+                    ext = ext[1:]  # Remove the leading dot
+                else:
+                    ext = None  # Handle cases where no extension exists
+
+            else:
+                ext = self.__jd.name.split('.')[1]
+            self.__text_raw = utils.extract_text(self.__jd, '.' + ext)
+
         self.__text = ' '.join(self.__text_raw.split())
         self.__nlp = nlp(self.__text)
         self.__custom_nlp = custom_nlp(self.__text_raw)
