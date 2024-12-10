@@ -45,39 +45,65 @@
          ]
      }
      ```
+
 3. **(NEW!!!) (POST) `/resume/beta`**  
    - **Description**: Newer, Optimised and Faster Method to get predictions.  
      - Key: `file`  
      - MIME Type: `application/pdf`  
    - **Output**:  
-- All of these key-pairs will be returned, Null will be returned if not detected
-```json    
-{
-    "name": " ",
-    "email": "",
-    "mobile_number": "",
-    "skills": [
-        
-    ],
-    "college_name": null,
-    "degree": [
-        ""
-    ],
-    "designation": [
-        ""
-    ],
-    "experience": [
-        ""
-    ],
-    "company_name": null,
-    "no_of_pages": 2,
-    "total_exp": null,
-    "total_experience": 0.0,
-    "linkedin": null
-}
-```
+     ```json    
+     {
+         "name": " ",
+         "email": "",
+         "mobile_number": "",
+         "skills": [],
+         "college_name": null,
+         "degree": [""],
+         "designation": [""],
+         "experience": [""],
+         "company_name": null,
+         "no_of_pages": 2,
+         "total_exp": null,
+         "total_experience": 0.0,
+         "linkedin": null
+     }
+     ```
 
----
+4. **(POST) `/matching/short`**  
+   - **Description**: Processes the provided JSON data and returns profile and relevancy scores.  
+   - **Output**:  
+     ```json
+     {
+         "profile_score": 85.0,
+         "relevancy_score": 90.0
+     }
+     ```
+
+5. **(POST) `/matching/longVerbose`**  
+   - **Description**: Processes the provided JSON data and returns detailed profile comparison information.  
+   - **Output**:  
+     ```json
+     {
+         "profile_score": 85.0,
+         "relevancy_score": 90.0,
+         "candidates": [
+             {
+                 "name": "John Doe",
+                 "intersection_score": 75.0,
+                 "cosine_similarity": 85.0,
+                 "jaccard_similarity": 60.0,
+                 "overall_similarity": 70.0
+             },
+             {
+                 "name": "Jane Doe",
+                 "intersection_score": 65.0,
+                 "cosine_similarity": 75.0,
+                 "jaccard_similarity": 55.0,
+                 "overall_similarity": 60.0
+             }
+         ]
+     }
+     ```
 
 ---
 
@@ -88,7 +114,6 @@
 - Enjoy using the current version in the meantime!
 
 ---
-
 
 ## To-Do List
 
