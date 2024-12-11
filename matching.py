@@ -76,7 +76,6 @@ def jaccard_similarity_score(job_skills, candidate_skills):
 
 
 def compare_profiles_with_expert(data):
-
     subject_skills = set(data["subjectData"]["recommendedSkills"])
     expert_skills = set(data["expertData"]["skills"])
     candidate_skills = [set(candidate["skills"]) for candidate in data["candidateData"]]
@@ -94,16 +93,15 @@ def compare_profiles_with_expert(data):
     results = []
     for candidate in data["candidateData"]:
         intersection_score = len(subject_skills.intersection(set(candidate["skills"]))) / len(subject_skills) * 100
-        _, cosine_score = cosine_similarity_with_tfidf(candidate)
-        #jaccard_score = len(subject_skills.intersection(set(candidate["skills"]))) / len(subject_skills.union(set(candidate["skills"]))) * 100
-        _, jaccard_score = jaccard_similarity_score(candidate)
-        overall_similarity = (intersection_score + cosine_score + jaccard_score) / 3
+        cosine_score = cosine_similarity_with_tfidf(subject_skills, candidate["skills"]) * 100
+        jaccard_score_value = jaccard_similarity_score(subject_skills, candidate["skills"]) * 100
+        overall_similarity = (intersection_score + cosine_score + jaccard_score_value) / 3
 
         results.append({
             "name": candidate["name"],
             "intersection_score": round(intersection_score, 2),
             "cosine_similarity": round(cosine_score, 2),
-            "jaccard_similarity": round(jaccard_score, 2),
+            "jaccard_similarity": round(jaccard_score_value, 2),
             "overall_similarity": round(overall_similarity, 2)
         })
 
@@ -129,7 +127,7 @@ def compare_profiles_with_board(data):
         jaccard_score = jaccard_similarity_score(
             data["subjectData"]["recommendedSkills"],
             candidate["skills"]
-        )  # Pass job skills and candidate skills
+        )
         overall_similarity = (intersection_score + cosine_score * 100 + jaccard_score * 100) / 3
 
         results.append({
@@ -144,8 +142,6 @@ def compare_profiles_with_board(data):
         "relevancy_score": round(relevancy_score, 2),
         "candidates": results
     }
-
-
 
 
 if __name__ == '__main__':
