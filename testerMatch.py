@@ -1,5 +1,5 @@
 import json
-from matching import compare_profiles_with_expert  # Replace with your module name
+from matching import compare_profiles_with_expert, compare_profiles_with_board
 
 def main():
     # Example JSON Input
@@ -29,15 +29,15 @@ def main():
     }
 
     # Call the function and get results
-    output = compare_profiles_with_expert(json_input)
+    output = compare_profiles_with_board(json_input)
 
     # Extract profile and relevancy scores
-    profile_score = output["profile_score"]
+    #profile_score = output["profile_score"]
     relevancy_score = output["relevancy_score"]
     results = output["candidates"]
 
     # Print the scores
-    print(f"Profile Score: {profile_score}%")
+    #print(f"Profile Score: {profile_score}%")
     print(f"Relevancy Score: {relevancy_score}%\n")
 
     # Print the candidate matching results

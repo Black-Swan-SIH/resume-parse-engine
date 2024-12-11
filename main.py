@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from utils import open_pdf, preprocess_pred_res, predictor
 import resume_parser
 import aiofiles
-from matching import compare_profiles_with_expert
+from matching import compare_profiles_with_expert, compare_profiles_with_board
 
 app = FastAPI()
 
@@ -81,6 +81,14 @@ async def matching_short(data: dict):
 async def matching_long_verbose(data: dict):
     try:
         result = compare_profiles_with_expert(data)
+        return JSONResponse(content=result)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+@app.post("/matching/candy")
+async def matching_long_verbose(data: dict):
+    try:
+        result = compare_profiles_with_board(data)
         return JSONResponse(content=result)
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)

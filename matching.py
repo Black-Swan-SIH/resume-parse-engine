@@ -1,4 +1,5 @@
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics import jaccard_score
 from sklearn.metrics.pairwise import cosine_similarity
 from resume_parser import Resume_Parser
 from job_parser import JdParser
@@ -55,17 +56,27 @@ def matching_result_wrapper(jd, resumes: list[str]):
     parser = MatchingEngine(jd, resumes)
     return parser.simple_intersection_score()
 
+def cosine_similarity_with_tfidf(job_skills, candidate_skills):
+    vectorizer = TfidfVectorizer()
+    job_skills_text = " ".join(job_skills)
+    candidate_skills_text = " ".join(candidate_skills)
+    vectors = vectorizer.fit_transform([job_skills_text, candidate_skills_text])
+    cosine_sim = cosine_similarity(vectors[0:1], vectors[1:2])
+    score = cosine_sim[0, 0]
+    return score
+
+def jaccard_similarity_score(job_skills, candidate_skills):
+    job_skills_set = set(job_skills)  # Convert job skills to a set
+    candidate_skills_set = set(candidate_skills)  # Convert candidate's skills to a set
+    intersection = job_skills_set.intersection(candidate_skills_set)
+    union = job_skills_set.union(candidate_skills_set)
+    score = len(intersection) / len(union) if union else 0
+    return score
+
+
 
 def compare_profiles_with_expert(data):
-    """
-    Compares the skills of candidates and the job opening with an expert's skillset.
 
-    Args:
-        data (dict): A JSON object containing subjectData, candidateData, and expertData.
-
-    Returns:
-        dict: A dictionary containing profile score, relevancy score, and candidate matching results.
-    """
     subject_skills = set(data["subjectData"]["recommendedSkills"])
     expert_skills = set(data["expertData"]["skills"])
     candidate_skills = [set(candidate["skills"]) for candidate in data["candidateData"]]
@@ -80,12 +91,12 @@ def compare_profiles_with_expert(data):
     job_match_score = len(expert_skills.intersection(subject_skills)) / len(subject_skills) * 100
     relevancy_score = (0.6 * profile_score) + (0.4 * job_match_score)
 
-    # Candidate Matching Results
     results = []
     for candidate in data["candidateData"]:
         intersection_score = len(subject_skills.intersection(set(candidate["skills"]))) / len(subject_skills) * 100
-        cosine_score = 100  # Placeholder; adjust if cosine similarity computation is included
-        jaccard_score = len(subject_skills.intersection(set(candidate["skills"]))) / len(subject_skills.union(set(candidate["skills"]))) * 100
+        _, cosine_score = cosine_similarity_with_tfidf(candidate)
+        #jaccard_score = len(subject_skills.intersection(set(candidate["skills"]))) / len(subject_skills.union(set(candidate["skills"]))) * 100
+        _, jaccard_score = jaccard_similarity_score(candidate)
         overall_similarity = (intersection_score + cosine_score + jaccard_score) / 3
 
         results.append({
@@ -101,6 +112,39 @@ def compare_profiles_with_expert(data):
         "relevancy_score": round(relevancy_score, 2),
         "candidates": results
     }
+
+def compare_profiles_with_board(data):
+    subject_skills = set(data["subjectData"]["recommendedSkills"])
+    candidate_skills = [set(candidate["skills"]) for candidate in data["candidateData"]]
+    aggregated_candidate_skills = set.union(*candidate_skills)
+    relevancy_score = len(subject_skills.intersection(aggregated_candidate_skills)) / len(aggregated_candidate_skills) * 100
+
+    results = []
+    for candidate in data["candidateData"]:
+        intersection_score = len(subject_skills.intersection(set(candidate["skills"]))) / len(subject_skills) * 100
+        cosine_score = cosine_similarity_with_tfidf(
+            data["subjectData"]["recommendedSkills"],
+            candidate["skills"]
+        )
+        jaccard_score = jaccard_similarity_score(
+            data["subjectData"]["recommendedSkills"],
+            candidate["skills"]
+        )  # Pass job skills and candidate skills
+        overall_similarity = (intersection_score + cosine_score * 100 + jaccard_score * 100) / 3
+
+        results.append({
+            "name": candidate["name"],
+            "intersection_score": round(intersection_score, 2),
+            "cosine_similarity": round(cosine_score * 100, 2),
+            "jaccard_similarity": round(jaccard_score * 100, 2),
+            "overall_similarity": round(overall_similarity, 2)
+        })
+
+    return {
+        "relevancy_score": round(relevancy_score, 2),
+        "candidates": results
+    }
+
 
 
 
@@ -138,4 +182,4 @@ if __name__ == '__main__':
         #result = compare_profiles_with_expert(json_input)
         # results = [p.get() for p in results]
 
-        pprint.pprint(result)
+        pprint.pprint(results)
