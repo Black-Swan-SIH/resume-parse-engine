@@ -55,7 +55,7 @@ if __name__ == '__main__':
         'limits': 700  # Set the number of entries per page to 100
     }
 
-    time.sleep(0.5)
+    time.sleep(1)
 
     scraped_data = scrape_page(base_url, params)
     with open('scraped_data.json', 'w') as json_file:

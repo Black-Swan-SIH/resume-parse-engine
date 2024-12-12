@@ -109,11 +109,11 @@ async def send_expert_data(request: URLRequest):
         'title': '',
         'designation[]': 'Professor',
         'page': 1,
-        'limits': 100  # Set the number of entries per page to 100
+        'limits': 200  # Set the number of entries per page to 100
     }
     url = request.url
     try:
-        time.sleep(0.5)
+        time.sleep(2)
         experts = scrape_page(url, params)
         return experts
     except Exception as e:

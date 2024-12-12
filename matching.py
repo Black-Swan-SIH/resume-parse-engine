@@ -119,36 +119,33 @@ def compare_profiles_with_expert(data):
 
 def compare_profiles_with_board(data):
     subject_skills = set(data["subjectData"]["recommendedSkills"])
-    candidate_skills = [set(candidate["skills"]) for candidate in data["candidateData"]]
-    aggregated_candidate_skills = set.union(*candidate_skills)
-    relevancy_score = len(subject_skills.intersection(aggregated_candidate_skills)) / len(aggregated_candidate_skills) * 100
+    candidate_skills = set(data["candidateData"]["skills"])
+    aggregated_candidate_skills = candidate_skills
+    relevancy_score = len(subject_skills.intersection(aggregated_candidate_skills)) / len(subject_skills) * 100
 
-    results = []
-    for candidate in data["candidateData"]:
-        intersection_score = len(subject_skills.intersection(set(candidate["skills"]))) / len(subject_skills) * 100
-        cosine_score = cosine_similarity_with_tfidf(
-            data["subjectData"]["recommendedSkills"],
-            candidate["skills"]
-        )
-        jaccard_score = jaccard_similarity_score(
-            data["subjectData"]["recommendedSkills"],
-            candidate["skills"]
-        )
-        overall_similarity = (intersection_score + cosine_score * 100 + jaccard_score * 100) / 3
+    intersection_score = len(subject_skills.intersection(candidate_skills)) / len(subject_skills) * 100
+    cosine_score = cosine_similarity_with_tfidf(
+        data["subjectData"]["recommendedSkills"],
+        data["candidateData"]["skills"]
+    )
+    jaccard_score = jaccard_similarity_score(
+        data["subjectData"]["recommendedSkills"],
+        data["candidateData"]["skills"]
+    )
+    overall_similarity = (intersection_score + cosine_score * 100 + jaccard_score * 100) / 3
 
-        results.append({
-            "name": candidate["name"],
-            "intersection_score": round(intersection_score, 2),
-            "cosine_similarity": round(cosine_score * 100, 2),
-            "jaccard_similarity": round(jaccard_score * 100, 2),
-            "overall_similarity": round(overall_similarity, 2)
-        })
+    result = {
+        "name": data["candidateData"]["name"],
+        "intersection_score": round(intersection_score, 2),
+        "cosine_similarity": round(cosine_score * 100, 2),
+        "jaccard_similarity": round(jaccard_score * 100, 2),
+        "overall_similarity": round(overall_similarity, 2)
+    }
 
     return {
         "relevancy_score": round(relevancy_score, 2),
-        "candidates": results
+        "candidate": result
     }
-
 
 if __name__ == '__main__':
     pool = mp.Pool(mp.cpu_count())
