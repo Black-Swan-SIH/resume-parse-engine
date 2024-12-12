@@ -40,7 +40,7 @@ def scrape_page(url, params):
             'Designation': designation,
             'Department': department,
             'Expertise': expertise_list,
-            'Profile Link': profile_link
+            'Profile_Link': profile_link
         })
 
     return data
