@@ -1,62 +1,59 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-import time
+import requests
 from bs4 import BeautifulSoup
+import time
+import json
 
-driver = webdriver.Chrome()
-base_url = "https://scholar.google.com/citations?view_op=search_authors&hl=en&mauthors=iitd.ac.in+"
+base_url = 'https://iitb.irins.org/searchc/search'
 
-driver.get(base_url)
+def scrape_page(url, params):
+    response = requests.post(url, data=params, verify=False, timeout=10)
+    soup = BeautifulSoup(response.content, 'html.parser')
 
-time.sleep(3)
+    data = []
 
-profile_list = []
+    experts = soup.find_all('div', class_='list-product-description')
 
-def parse_profiles():
-    soup = BeautifulSoup(driver.page_source, "html.parser")
-    profiles = soup.find_all("div", class_="gs_ai_t")
+    for expert in experts:
+        profile_link_tag = expert.find('a', href=True)
+        profile_link = profile_link_tag['href'] if profile_link_tag else 'N/A'
+        expert_id = profile_link.split('/')[-1] if profile_link != 'N/A' else 'N/A'
 
-    for profile in profiles:
-        name = profile.find("h3", class_="gs_ai_name").text.strip() if profile.find("h3", class_="gs_ai_name") else "No name"
-        link = profile.find("a", href=True)['href'] if profile.find("a", href=True) else "No link"
-        institution = profile.find("div", class_="gs_ai_aff").text.strip() if profile.find("div", class_="gs_ai_aff") else "No institution"
-        interests = ", ".join([interest.text.strip() for interest in profile.find_all("a", class_="gs_ai_one_int")]) if profile.find_all("a", class_="gs_ai_one_int") else "No interests"
+        name_tag = expert.find('h4', class_='title-price')
+        name = ' '.join(name_tag.text.split()) if name_tag else 'N/A'
 
-        profile_data = {
-            "Name": name,
-            "Link": f"https://scholar.google.com{link}" if link != "No link" else "No link",
-            "Institution": institution,
-            "Interests": interests
-        }
-        profile_list.append(profile_data)
+        designation_tag = expert.find('span', class_='title-price')
+        designation = ' '.join(designation_tag.text.split()) if designation_tag else 'N/A'
 
-parse_profiles()
+        department_tag = expert.find('b')
+        department = ' '.join(department_tag.text.split()) if department_tag else 'N/A'
 
-for page in range(1, 10):
-    try:
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        next_button = soup.find("button", class_="gs_btnPR gs_in_ib gs_btn_half gs_btn_lsu")
-        if not next_button:
-            print("No more pages available.")
-            break
+        expertise_tag = expert.find('i', class_='fa fa-cog')
+        expertise = expertise_tag.next_sibling.strip() if expertise_tag and expertise_tag.next_sibling else 'N/A'
+        data.append({
+            'Expert ID': expert_id,
+            'Name': name,
+            'Designation': designation,
+            'Department': department,
+            'Expertise': expertise,
+            'Profile Link': profile_link
+        })
 
-        next_url = next_button.get("onclick")
-        if not next_url:
-            print("No next URL found.")
-            break
+    return data
 
-        after_author = next_url.split("after_author=")[1].split("&")[0]
-        next_page_url = f"{base_url}&after_author={after_author}&astart={page * 10}"
 
-        driver.get(next_page_url)
-        time.sleep(3)
+params = {
+    'field': 'all',
+    'title': '',
+    'designation[]': 'Professor',
+    'page': 1,
+    'limits': 700  # Set the number of entries per page to 100
+}
 
-        parse_profiles()
-    except Exception as e:
-        print(f"Error occurred: {e}")
-        break
+time.sleep(0.5)
 
-driver.quit()
 
-for profile in profile_list:
-    print(profile)
+scraped_data = scrape_page(base_url, params)
+with open('scraped_data.json', 'w') as json_file:
+    json.dump(scraped_data, json_file, indent=4)
+
+print("Data has been written to scraped_data.json")

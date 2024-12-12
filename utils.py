@@ -514,3 +514,4 @@ def extract_skills_from_all(all_skill_entries, text_chunks, skills_file_path=Non
             identified_skills.append(processed_chunk)
 
     return [skill.capitalize() for skill in set(skill.lower() for skill in identified_skills)]
+

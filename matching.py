@@ -93,8 +93,14 @@ def compare_profiles_with_expert(data):
     results = []
     for candidate in data["candidateData"]:
         intersection_score = len(subject_skills.intersection(set(candidate["skills"]))) / len(subject_skills) * 100
-        cosine_score = cosine_similarity_with_tfidf(subject_skills, candidate["skills"]) * 100
-        jaccard_score_value = jaccard_similarity_score(subject_skills, candidate["skills"]) * 100
+        cosine_score = cosine_similarity_with_tfidf(
+            data["subjectData"]["recommendedSkills"],
+            candidate["skills"]
+        ) * 100
+        jaccard_score_value = jaccard_score = jaccard_similarity_score(
+            data["subjectData"]["recommendedSkills"],
+            candidate["skills"]
+        ) * 100
         overall_similarity = (intersection_score + cosine_score + jaccard_score_value) / 3
 
         results.append({

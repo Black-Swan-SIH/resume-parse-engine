@@ -1,5 +1,8 @@
+import json
 import os
 import shutil
+import time
+
 from auth import validate_api_key
 from fastapi import FastAPI, File, UploadFile, Depends, Header, HTTPException
 from fastapi.responses import JSONResponse
@@ -7,6 +10,7 @@ from utils import open_pdf, preprocess_pred_res, predictor
 import resume_parser
 import aiofiles
 from matching import compare_profiles_with_expert, compare_profiles_with_board
+from scrapy import scrape_page
 
 app = FastAPI()
 
@@ -90,5 +94,23 @@ async def matching_long_verbose(data: dict):
     try:
         result = compare_profiles_with_board(data)
         return JSONResponse(content=result)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.get("/extraExpert/giveme")
+async def send_expert_data():
+    params = {
+        'field': 'all',
+        'title': '',
+        'designation[]': 'Professor',
+        'page': 1,
+        'limits': 100  # Set the number of entries per page to 100
+    }
+    url = "https://iitb.irins.org/searchc/search"
+    try:
+        time.sleep(0.5)
+        experts = scrape_page(url, params)
+        return experts
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
