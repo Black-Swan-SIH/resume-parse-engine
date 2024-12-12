@@ -35,7 +35,7 @@ def scrape_page(url, params):
         expertise_list = [exp.strip() for exp in expertise.split(',')] if expertise != 'N/A' else []
 
         data.append({
-            'Expert ID': expert_id,
+            'Expert_ID': expert_id,
             'Name': name,
             'Designation': designation,
             'Department': department,
