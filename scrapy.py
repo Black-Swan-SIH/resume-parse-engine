@@ -5,6 +5,7 @@ import json
 
 base_url = 'https://iitb.irins.org/searchc/search'
 
+
 def scrape_page(url, params):
     response = requests.post(url, data=params, verify=False, timeout=10)
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -29,31 +30,35 @@ def scrape_page(url, params):
 
         expertise_tag = expert.find('i', class_='fa fa-cog')
         expertise = expertise_tag.next_sibling.strip() if expertise_tag and expertise_tag.next_sibling else 'N/A'
+
+        # Convert expertise to an array
+        expertise_list = [exp.strip() for exp in expertise.split(',')] if expertise != 'N/A' else []
+
         data.append({
             'Expert ID': expert_id,
             'Name': name,
             'Designation': designation,
             'Department': department,
-            'Expertise': expertise,
+            'Expertise': expertise_list,
             'Profile Link': profile_link
         })
 
     return data
 
 
-params = {
-    'field': 'all',
-    'title': '',
-    'designation[]': 'Professor',
-    'page': 1,
-    'limits': 700  # Set the number of entries per page to 100
-}
+if __name__ == '__main__':
+    params = {
+        'field': 'all',
+        'title': '',
+        'designation[]': 'Professor',
+        'page': 1,
+        'limits': 700  # Set the number of entries per page to 100
+    }
 
-time.sleep(0.5)
+    time.sleep(0.5)
 
+    scraped_data = scrape_page(base_url, params)
+    with open('scraped_data.json', 'w') as json_file:
+        json.dump(scraped_data, json_file, indent=4)
 
-scraped_data = scrape_page(base_url, params)
-with open('scraped_data.json', 'w') as json_file:
-    json.dump(scraped_data, json_file, indent=4)
-
-print("Data has been written to scraped_data.json")
+    print("Data has been written to scraped_data.json")

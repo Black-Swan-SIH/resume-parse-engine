@@ -2,15 +2,19 @@ import json
 import os
 import shutil
 import time
-
+from http.client import responses
+from pydantic import BaseModel
 from auth import validate_api_key
-from fastapi import FastAPI, File, UploadFile, Depends, Header, HTTPException
+from fastapi import FastAPI, File, UploadFile, Depends, Header, HTTPException, Query
 from fastapi.responses import JSONResponse
 from utils import open_pdf, preprocess_pred_res, predictor
 import resume_parser
 import aiofiles
 from matching import compare_profiles_with_expert, compare_profiles_with_board
 from scrapy import scrape_page
+import requests
+
+
 
 app = FastAPI()
 
@@ -18,7 +22,8 @@ file_location = "uploaded_files/"
 
 async def api_key_auth(x_api_key: str = Header(...)):
     validate_api_key(x_api_key)
-
+class URLRequest(BaseModel):
+    url: str
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
@@ -90,16 +95,15 @@ async def matching_long_verbose(data: dict):
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
 @app.post("/matching/candy")
-async def matching_long_verbose(data: dict):
+async def matching_candy(data: dict):
     try:
         result = compare_profiles_with_board(data)
         return JSONResponse(content=result)
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
-
-@app.get("/extraExpert/giveme")
-async def send_expert_data():
+@app.post("/extraExpert/giveme")
+async def send_expert_data(request: URLRequest):
     params = {
         'field': 'all',
         'title': '',
@@ -107,7 +111,7 @@ async def send_expert_data():
         'page': 1,
         'limits': 100  # Set the number of entries per page to 100
     }
-    url = "https://iitb.irins.org/searchc/search"
+    url = request.url
     try:
         time.sleep(0.5)
         experts = scrape_page(url, params)
